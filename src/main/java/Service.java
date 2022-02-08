@@ -64,7 +64,7 @@ public class Service {
 			
 		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		//AQUÍ COMENTA LA PARTE DEL SERVICIO EN LA QUE SE TRABAJA CON OWL COMO SE ESPECIFICA EN EL UC2
-		
+		//TODO: Aprender a emplear GRAPHDB y conectarlo con el servicio
 		
 		
 	}
