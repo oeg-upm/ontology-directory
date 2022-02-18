@@ -16,7 +16,11 @@
         <artifactId>graphdb-free-runtime</artifactId>
         <version>9.10.2</version>
     </dependency>
- 
+ 	<dependency>
+    	<groupId>io.github.andreacimminoarriaga</groupId>
+    	<artifactId>sparql-streamline</artifactId>
+    	<version>0.1.0</version>
+	</dependency>
   	
   </dependencies>
 </project>
