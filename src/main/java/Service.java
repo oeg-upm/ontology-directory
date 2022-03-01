@@ -1,23 +1,8 @@
 import static spark.Spark.*;
-
-import org.apache.jena.ontology.OntModel;
-import org.apache.jena.ontology.OntModelSpec;
-import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.rdf.model.RDFNode;
-import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.sparql.resultset.ResultsFormat;
-import org.eclipse.jetty.server.Response;
-
 import sparql.streamline.core.EndpointConfiguration;
 import sparql.streamline.core.SparqlEndpoint;
-import sparql.streamline.exception.SparqlQuerySyntaxException;
-import sparql.streamline.exception.SparqlRemoteEndpointException;
-
 import java.io.ByteArrayOutputStream;
-import java.io.StringWriter;
-import java.util.Iterator;
 
 public class Service {
 
@@ -35,9 +20,11 @@ public class Service {
 		ec.setSparqlUpdate(endpointupdate);
 		SparqlEndpoint.setConfiguration(ec);				
 		
+		//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		//AQUÍ COMIENZA LA PARTE DEL UC1
 		
 		//GET para que devuelva el conjunto de tripletas guardadas
-		get("/OD", (request, response) -> {
+		get("/OD/Ontologies", (request, response) -> {
 			String query = "BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
 					+ "SELECT ?x ?name ?url\r\n"
@@ -55,7 +42,7 @@ public class Service {
 
 		
 		//GET Para que busque un elemento dentro de la lista al incluirlo en la URL.
-		get("/OD/*/URL", (request, response) -> {
+		get("/OD/Ontologies/*/URL", (request, response) -> {
 				StringBuffer sb = new StringBuffer();
 				for (int i=0; i<request.splat().length;i++)
 					sb.append(request.splat()[i]);
@@ -76,7 +63,7 @@ public class Service {
 		
 		
 		//POST Para crear una URL dentro de la lista de estas. 
-		post("/OD/*/URL", (request, response) -> {
+		post("/OD/Ontologies/*/URL", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
 			for (int i=0; i<request.splat().length;i++)
 				sb.append(request.splat()[i]);
@@ -96,7 +83,7 @@ public class Service {
 		
 		
 		///DELETE Para eliminar una URL de dentro de la lista de estas. 
-		delete("/OD/*/URL", (request, response) -> {
+		delete("/OD/Ontologies/*/URL", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
 			for (int i=0; i<request.splat().length;i++)
 				sb.append(request.splat()[i]);
@@ -118,7 +105,7 @@ public class Service {
 		
 		
 		//PUT para modificar los valores de la URL de una determinada ontología 
-		put("/OD/*/URL", (request, response) -> {
+		put("/OD/Ontologies/*/URL", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
 			for (int i=0; i<request.splat().length;i++)
 				sb.append(request.splat()[i]);
@@ -152,7 +139,7 @@ public class Service {
 		//AQUÍ COMIENZA LA PARTE DEL SERVICIO EN LA QUE SE TRABAJA CON OWL COMO SE ESPECIFICA EN EL UC2
 		
 		//GET Para que de una ontología dada extraiga todas las tripletas presentes 
-		get("/OD/*/triplets", (request, response) -> {
+		get("/OD/Ontologies/*/triplets", (request, response) -> {
 				StringBuffer sb = new StringBuffer();
 				for (int i=0; i<request.splat().length;i++)
 					sb.append(request.splat()[i]);
@@ -165,9 +152,8 @@ public class Service {
 				return res;
 	     });
 		
-		//TODO: Crear grafo vacío y llenarlo con un LOAD?
 		//POST Para que la creación de un grafo partiendo del código OWL de una ontología dada y lo llene de estas tripletas.
-		post("/OD/*/triplets", (request, response) -> {
+		post("/OD/Ontologies/*/triplets", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
 			for (int i=0; i<request.splat().length;i++)
 				sb.append(request.splat()[i]);
@@ -180,7 +166,7 @@ public class Service {
 		});
 		
 		//DELETE, se pasa nombre de un grafo que contiene una ontología y este se elimina.
-		delete("/OD/*/triplets", (request, response) -> {
+		delete("/OD/Ontologies/*/triplets", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
 			for (int i=0; i<request.splat().length;i++)
 				sb.append(request.splat()[i]);
@@ -192,7 +178,7 @@ public class Service {
 		});
 				
 		//PUT, se pasa nombre e IRI de origen y este modifica una ontología existente. 
-		put("/OD/*/triplets", (request, response) -> {
+		put("/OD/Ontologies/*/triplets", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
 			for (int i=0; i<request.splat().length;i++)
 				sb.append(request.splat()[i]);
@@ -207,15 +193,134 @@ public class Service {
 		
 		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		//UC3: UC3: Registration of a service/endpoint and (automatic?) extraction of the explicit ontology
-		//TODO: GET de los endpoints
-		//TODO: POST de los endpoints
-		//TODO: DELETE de los endpoints
-		//TODO: PUT de los endpoints
-		//TODO: GET de los servicios
-		//TODO: POST de los servicios
-		//TODO: DELETE de los servicios
-		//TODO: PUT de los servicios
 		
+		//GET: Obtención de todos los endpoints registrados 
+		get("/OD/Endpoints", (request, response) -> {
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+					+ "SELECT ?x ?name ?url\r\n"
+					+ "WHERE{\r\n"
+					+ "    GRAPH <http://localhost:4567/OD/Endpoints> {\r\n"
+					+ "    ?x foaf:name ?name.\r\n"
+					+ "    ?x foaf:homepage ?url\r\n"
+					+ "}    \r\n"
+					+ "}";		
+			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
+			return res0.toString();
+	     });
+		
+		
+		//GET de un endpoint concreto junto con su conjunto de términos asociado
+		//Funciona el método pero en el ejemplo de wikidata tarda tanto tiempo que el servicio se cae. 
+		//TODO: Pedir a Andrea ejemplos de endpoints para testear esto.
+		get("/OD/Endpoints/*", (request, response) -> {
+			StringBuffer sb = new StringBuffer();
+			for (int i=0; i<request.splat().length;i++)
+				sb.append(request.splat()[i]);
+			String name = sb.toString();
+			String url = request.queryParams("url");
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+					+ "SELECT ?x ?url ?s ?p ?o\r\n"
+					+ "WHERE {\r\n"
+					+ "    GRAPH <http://localhost:4567/OD/Endpoints>{\r\n"
+					+ "	?x foaf:name \""+name+"\".\r\n"
+					+ "	?x foaf:homepage ?url.\r\n"
+					+ "	}\r\n"
+					+ "    GRAPH <"+url+">{\r\n"
+					+ "	?s ?p ?o.\r\n"
+					+ "	}\r\n"
+					+ "}";			
+			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
+			return res0.toString();
+		});
+		
+		
+		//TODO: Pedir a Andrea ejemplos de endpoints para testear esto.
+		//POST de los endpoints y las tripletas que este contiene 
+		post("/OD/Endpoints/*", (request, response) -> {
+			StringBuffer sb = new StringBuffer();
+			for (int i=0; i<request.splat().length;i++)
+				sb.append(request.splat()[i]);
+			String name = sb.toString();
+			String url = request.queryParams("url"); 
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+					+ "INSERT DATA { \r\n"
+					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\r\n"
+					+ "	<http://localhost:4567/"+name+"> foaf:name \""+name+"\"; \r\n"
+					+ "    							foaf:homepage <"+url+">.\r\n"
+					+"}"
+					+ "} ";
+			SparqlEndpoint.update(query);
+			String query1 = "BASE <http://localhost:4567/>\r\n"
+					+ "LOAD <"+url+"> INTO GRAPH <"+url+">";
+			SparqlEndpoint.update(query1);
+			return "Lista de términos añadida";
+		});
+		
+		
+		//TODO: Pedir a Andrea ejemplos de endpoints para testear esto.
+		// DELETE de la información del endpoint en el grafo de endpoints y borrado de su grafo correspondiente.
+		delete("/OD/Endpoints/*", (request, response) -> {
+			StringBuffer sb = new StringBuffer();
+			for (int i=0; i<request.splat().length;i++)
+				sb.append(request.splat()[i]);
+			String name = sb.toString();
+			String query ="BASE <http://localhost:4567/>\r\n"
+					+ "DROP GRAPH <"+name+">;\r\n";
+			SparqlEndpoint.update(query);
+			String query1 = "BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+					+ "DELETE {\r\n"
+					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\\r\\n"
+					+ "    ?x foaf:name ?name;\r\n"
+					+ "       foaf:homepage ?url.\r\n"
+					+ "}"
+					+ "}\r\n"
+					+ "WHERE{\r\n"
+					+ "     ?x foaf:name ?name;\r\n"
+					+ "       foaf:homepage ?url.\r\n"
+					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
+					+ "}";
+			SparqlEndpoint.update(query1);
+		    return "Lista de términos y entrada eliminados";
+		});
+		
+		
+		//TODO: PUT de los endpoints
+		put("/OD/Endpoints/*/", (request, response) -> {
+			StringBuffer sb = new StringBuffer();
+			for (int i=0; i<request.splat().length;i++)
+				sb.append(request.splat()[i]);
+			String name = sb.toString();
+			String SOURCE = request.queryParams("SOURCE");
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "LOAD <"+SOURCE+"> INTO GRAPH <"+name+">";
+			SparqlEndpoint.update(query);
+			String query1 ="BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+					+ "DELETE {\r\n"
+					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\\r\\n"
+					+ "    ?x foaf:homepage ?url.\r\n"
+					+ "}\r\n"
+					+ "}"
+					+ "WHERE{\r\n"
+					+ "     ?x foaf:name ?name;\r\n"
+					+ "       foaf:homepage ?url.\r\n"
+					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
+					+ "}";
+			SparqlEndpoint.update(query1);
+			String query2 = "BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+					+ "INSERT DATA { \r\n"
+					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\\r\\n"
+					+ "	<http://localhost:4567/"+name.replace(" ","")+"> foaf:homepage <"+SOURCE+">.\r\n"
+					+ "}"
+					+ "} ";
+			SparqlEndpoint.update(query2);
+			return "Lista de tripletas actualizadaS";
+		});
 		
 		}
 	}
