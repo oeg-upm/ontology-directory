@@ -1,6 +1,14 @@
 import static spark.Spark.*;
 
+import org.apache.jena.ontology.OntModel;
+import org.apache.jena.ontology.OntModelSpec;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.sparql.resultset.ResultsFormat;
+import org.eclipse.jetty.server.Response;
 
 import sparql.streamline.core.EndpointConfiguration;
 import sparql.streamline.core.SparqlEndpoint;
@@ -8,41 +16,11 @@ import sparql.streamline.exception.SparqlQuerySyntaxException;
 import sparql.streamline.exception.SparqlRemoteEndpointException;
 
 import java.io.ByteArrayOutputStream;
+import java.io.StringWriter;
+import java.util.Iterator;
 
 public class Service {
-	/*
-	//Método auxiliar al que pasándole la query a realizar hace todo lo requerido 
-	public static String llamadaDBGraph(HTTPRepository repository,String query) {
-		//Creamos la conexión
-		RepositoryConnection conexion = repository.getConnection();
-		System.out.println("Conexión realizada");
-		//Se prepara y evalúa query que pide id, nombre y URL de las ontolgías de OntologyDirectory.
-		TupleQuery tupleQuery = conexion.prepareTupleQuery(QueryLanguage.SPARQL,query);
-        TupleQueryResult tupleQueryResult = tupleQuery.evaluate();
-        System.out.println("Query evaluada");
-        // Each result is represented by a BindingSet, which corresponds to a result row
-        String res= null;
-        //Al ser iterable almacenamos los diferentes elementos en un string a devolver.
-        while(tupleQueryResult.hasNext()) {
-        	BindingSet bindingSet = tupleQueryResult.next();
-            // Each BindingSet contains one or more Bindings
-            for (Binding binding : bindingSet) {
-                // Each Binding contains the variable name and the value for this result row
-                String name = binding.getName();
-                Value value = binding.getValue();
-               res += name + " = " + value + "\n";       
-            }
-            res += "\n";
-        }
-        System.out.println("Respuesta impresa");
-        //Cerramos la tupla y las conexiones.
-        tupleQueryResult.close();
-        conexion.close();
-        System.out.println("Conexiones y querys cerradas");
-		return res;
-	}
-	
-	*/
+
 	
 	public static void main (String[] args) {
 		//Iniciamos la conexión con el servicio de SPARQL de GraphDB para hacer la query.
@@ -55,8 +33,8 @@ public class Service {
 		String endpointupdate = "http://localhost:7200/repositories/OntologyDirectory/statements";
 		ec.setSparqlQuery(endpoint);
 		ec.setSparqlUpdate(endpointupdate);
-		SparqlEndpoint.setConfiguration(ec);	
-
+		SparqlEndpoint.setConfiguration(ec);				
+		
 		
 		//GET para que devuelva el conjunto de tripletas guardadas
 		get("/OD", (request, response) -> {
@@ -70,14 +48,8 @@ public class Service {
 		
 			//Creamos objeto SPARQLEndpoint
 			String res = null;
-			try {
-				ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
-				res=res0.toString();
-			} catch (SparqlQuerySyntaxException e) {
-				e.printStackTrace();
-			} catch (SparqlRemoteEndpointException e) {
-				e.printStackTrace();
-			}
+			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
+			res=res0.toString();
 			return res;
 	     });
 
@@ -97,14 +69,8 @@ public class Service {
 		                + "}\r\n"
 		                + "";
 				String res = null;
-				try {
-					ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
-					res=res0.toString();
-				} catch (SparqlQuerySyntaxException e) {
-					e.printStackTrace();
-				} catch (SparqlRemoteEndpointException e) {
-					e.printStackTrace();
-				}
+				ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
+				res=res0.toString();
 				return res;
 	     });
 		
@@ -122,13 +88,8 @@ public class Service {
 					+ "	<http://localhost:4567/"+name.replace(" ","")+"> foaf:name \""+name+"\"; \r\n"
 					+ "    							foaf:homepage <"+url+">.\r\n"
 					+ "} ";
-			try {
-				SparqlEndpoint.update(query);
-			} catch (SparqlQuerySyntaxException e) {
-				e.printStackTrace();
-			} catch (SparqlRemoteEndpointException e) {
-				e.printStackTrace();
-			}
+			
+			SparqlEndpoint.update(query);
 			return "Tripleta Añadida";
 		});
 		
@@ -155,7 +116,7 @@ public class Service {
 		   return "Tripleta Eliminada";
 		});
 		
-		//TODO: Hacer PUT para Graph DB.
+		
 		//PUT para modificar los valores de la URL de una determinada ontología 
 		put("/OD/*/URL", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
@@ -184,10 +145,77 @@ public class Service {
 			SparqlEndpoint.update(query1);
 		   return "Actualizada";
 		});
-		
+
 				
+		
 		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		//AQUÍ COMIENZA LA PARTE DEL SERVICIO EN LA QUE SE TRABAJA CON OWL COMO SE ESPECIFICA EN EL UC2
+		
+		//GET Para que de una ontología dada extraiga todas las tripletas presentes 
+		get("/OD/*/triplets", (request, response) -> {
+				StringBuffer sb = new StringBuffer();
+				for (int i=0; i<request.splat().length;i++)
+					sb.append(request.splat()[i]);
+				String name = sb.toString();
+				String query = "SELECT * FROM NAMED <http://localhost:4567/OD/"+name+">\r\n"
+						+ "{ GRAPH ?g { ?s ?p ?o } }";
+				String res = null;
+					ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
+				res=res0.toString();
+				return res;
+	     });
+		
+		//TODO: Crear grafo vacío y llenarlo con un LOAD?
+		//POST Para que la creación de un grafo partiendo del código OWL de una ontología dada y lo llene de estas tripletas.
+		post("/OD/*/triplets", (request, response) -> {
+			StringBuffer sb = new StringBuffer();
+			for (int i=0; i<request.splat().length;i++)
+				sb.append(request.splat()[i]);
+			String name = sb.toString();
+			String SOURCE = request.queryParams("SOURCE");
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "LOAD <"+SOURCE+"> INTO GRAPH <http://localhost:4567/OD/"+name+">";
+			SparqlEndpoint.update(query);	
+			return "Grafo añadido";
+		});
+		
+		//DELETE, se pasa nombre de un grafo que contiene una ontología y este se elimina.
+		delete("/OD/*/triplets", (request, response) -> {
+			StringBuffer sb = new StringBuffer();
+			for (int i=0; i<request.splat().length;i++)
+				sb.append(request.splat()[i]);
+			String name = sb.toString();
+			String query ="BASE <http://localhost:4567/>\r\n"
+					+ "DROP GRAPH <http://localhost:4567/OD/"+name+">;\r\n";
+			SparqlEndpoint.update(query);
+		    return "Grafo Eliminado";
+		});
+				
+		//PUT, se pasa nombre e IRI de origen y este modifica una ontología existente. 
+		put("/OD/*/triplets", (request, response) -> {
+			StringBuffer sb = new StringBuffer();
+			for (int i=0; i<request.splat().length;i++)
+				sb.append(request.splat()[i]);
+			String name = sb.toString();
+			String SOURCE = request.queryParams("SOURCE");
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "LOAD <"+SOURCE+"> INTO GRAPH <http://localhost:4567/OD/"+name+">";
+			SparqlEndpoint.update(query);
+			return "Grafo Actualizado";
+		});
+		
+		
+		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		//UC3: UC3: Registration of a service/endpoint and (automatic?) extraction of the explicit ontology
+		//TODO: GET de los endpoints
+		//TODO: POST de los endpoints
+		//TODO: DELETE de los endpoints
+		//TODO: PUT de los endpoints
+		//TODO: GET de los servicios
+		//TODO: POST de los servicios
+		//TODO: DELETE de los servicios
+		//TODO: PUT de los servicios
+		
 		
 		}
 	}
