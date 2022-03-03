@@ -32,12 +32,8 @@ public class Service {
 					+ "    ?x foaf:name ?name.\r\n"
 					+ "    ?x foaf:homepage ?url\r\n"
 					+ "}";
-		
-			//Creamos objeto SPARQLEndpoint
-			String res = null;
 			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
-			res=res0.toString();
-			return res;
+			return res0.toString();
 	     });
 
 		
@@ -55,10 +51,8 @@ public class Service {
 		                + "    ?x foaf:homepage ?url\r\n"
 		                + "}\r\n"
 		                + "";
-				String res = null;
 				ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
-				res=res0.toString();
-				return res;
+				return res0.toString();
 	     });
 		
 		
@@ -75,11 +69,9 @@ public class Service {
 					+ "	<http://localhost:4567/"+name.replace(" ","")+"> foaf:name \""+name+"\"; \r\n"
 					+ "    							foaf:homepage <"+url+">.\r\n"
 					+ "} ";
-			
 			SparqlEndpoint.update(query);
 			return "Tripleta Añadida";
 		});
-		
 		
 		
 		///DELETE Para eliminar una URL de dentro de la lista de estas. 
@@ -132,7 +124,6 @@ public class Service {
 			SparqlEndpoint.update(query1);
 		   return "Actualizada";
 		});
-
 				
 		
 		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -146,11 +137,10 @@ public class Service {
 				String name = sb.toString();
 				String query = "SELECT * FROM NAMED <http://localhost:4567/OD/"+name+">\r\n"
 						+ "{ GRAPH ?g { ?s ?p ?o } }";
-				String res = null;
-					ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
-				res=res0.toString();
-				return res;
+				ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
+				return res0.toString();
 	     });
+		
 		
 		//POST Para que la creación de un grafo partiendo del código OWL de una ontología dada y lo llene de estas tripletas.
 		post("/OD/Ontologies/*/triplets", (request, response) -> {
@@ -165,6 +155,7 @@ public class Service {
 			return "Grafo añadido";
 		});
 		
+		
 		//DELETE, se pasa nombre de un grafo que contiene una ontología y este se elimina.
 		delete("/OD/Ontologies/*/triplets", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
@@ -176,7 +167,8 @@ public class Service {
 			SparqlEndpoint.update(query);
 		    return "Grafo Eliminado";
 		});
-				
+		
+		
 		//PUT, se pasa nombre e IRI de origen y este modifica una ontología existente. 
 		put("/OD/Ontologies/*/triplets", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
@@ -212,13 +204,11 @@ public class Service {
 		
 		//GET de un endpoint concreto junto con su conjunto de términos asociado
 		//Funciona el método pero en el ejemplo de wikidata tarda tanto tiempo que el servicio se cae. 
-		//TODO: Pedir a Andrea ejemplos de endpoints para testear esto.
 		get("/OD/Endpoints/*", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
 			for (int i=0; i<request.splat().length;i++)
 				sb.append(request.splat()[i]);
 			String name = sb.toString();
-			String url = request.queryParams("url");
 			String query = "BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
 					+ "SELECT ?x ?url ?s ?p ?o\r\n"
@@ -227,16 +217,15 @@ public class Service {
 					+ "	?x foaf:name \""+name+"\".\r\n"
 					+ "	?x foaf:homepage ?url.\r\n"
 					+ "	}\r\n"
-					+ "    GRAPH <"+url+">{\r\n"
+					+ "    GRAPH ?url {\r\n"
 					+ "	?s ?p ?o.\r\n"
 					+ "	}\r\n"
-					+ "}";			
+					+ "}";
 			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
 			return res0.toString();
 		});
 		
 		
-		//TODO: Pedir a Andrea ejemplos de endpoints para testear esto.
 		//POST de los endpoints y las tripletas que este contiene 
 		post("/OD/Endpoints/*", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
@@ -259,21 +248,21 @@ public class Service {
 			return "Lista de términos añadida";
 		});
 		
-		
-		//TODO: Pedir a Andrea ejemplos de endpoints para testear esto.
+		//Quizá podríamos hacer primero query para obtener la url y así no se pasa como parámetro
+		//Por otro lado teniendo en cuenta que el NG tiene el nombre de la URL 
+		//¿No deberíamos directamente prescindir del nombre como atributo ya que tiene una presencia testimonial?
 		// DELETE de la información del endpoint en el grafo de endpoints y borrado de su grafo correspondiente.
 		delete("/OD/Endpoints/*", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
 			for (int i=0; i<request.splat().length;i++)
 				sb.append(request.splat()[i]);
 			String name = sb.toString();
-			String query ="BASE <http://localhost:4567/>\r\n"
-					+ "DROP GRAPH <"+name+">;\r\n";
-			SparqlEndpoint.update(query);
+			String url = request.queryParams("url"); 
 			String query1 = "BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+					+ "DROP GRAPH <"+url+">;\r\n"
 					+ "DELETE {\r\n"
-					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\\r\\n"
+					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\r\n"
 					+ "    ?x foaf:name ?name;\r\n"
 					+ "       foaf:homepage ?url.\r\n"
 					+ "}"
@@ -282,14 +271,16 @@ public class Service {
 					+ "     ?x foaf:name ?name;\r\n"
 					+ "       foaf:homepage ?url.\r\n"
 					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
-					+ "}";
+					+ "}\r\n";
+			//System.out.println(query1);
 			SparqlEndpoint.update(query1);
 		    return "Lista de términos y entrada eliminados";
 		});
 		
-		
-		//TODO: PUT de los endpoints
-		put("/OD/Endpoints/*/", (request, response) -> {
+		//Preguntar a Andrea y Raúl que hacer con el tema de que hacer con el nombre de los grafos ya que va asociado al servicio y quizá al cambiar el nombre del grafo se pierde algo
+		//al asociarlo a la dirección de donde se obtienen los datos.
+		//PUT de los endpoints
+		put("/OD/Endpoints/*", (request, response) -> {
 			StringBuffer sb = new StringBuffer();
 			for (int i=0; i<request.splat().length;i++)
 				sb.append(request.splat()[i]);
@@ -297,11 +288,12 @@ public class Service {
 			String SOURCE = request.queryParams("SOURCE");
 			String query = "BASE <http://localhost:4567/>\r\n"
 					+ "LOAD <"+SOURCE+"> INTO GRAPH <"+name+">";
+			System.out.println(query);
 			SparqlEndpoint.update(query);
 			String query1 ="BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
 					+ "DELETE {\r\n"
-					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\\r\\n"
+					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\r\n"
 					+ "    ?x foaf:homepage ?url.\r\n"
 					+ "}\r\n"
 					+ "}"
@@ -310,14 +302,16 @@ public class Service {
 					+ "       foaf:homepage ?url.\r\n"
 					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
 					+ "}";
+			System.out.println(query1);
 			SparqlEndpoint.update(query1);
 			String query2 = "BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
 					+ "INSERT DATA { \r\n"
-					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\\r\\n"
+					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\r\n"
 					+ "	<http://localhost:4567/"+name.replace(" ","")+"> foaf:homepage <"+SOURCE+">.\r\n"
 					+ "}"
 					+ "} ";
+			System.out.println(query2);
 			SparqlEndpoint.update(query2);
 			return "Lista de tripletas actualizadaS";
 		});
