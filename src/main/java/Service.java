@@ -288,7 +288,7 @@ public class Service {
 			String SOURCE = request.queryParams("SOURCE");
 			String query = "BASE <http://localhost:4567/>\r\n"
 					+ "LOAD <"+SOURCE+"> INTO GRAPH <"+name+">";
-			System.out.println(query);
+			//System.out.println(query);
 			SparqlEndpoint.update(query);
 			String query1 ="BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
@@ -302,7 +302,7 @@ public class Service {
 					+ "       foaf:homepage ?url.\r\n"
 					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
 					+ "}";
-			System.out.println(query1);
+			//System.out.println(query1);
 			SparqlEndpoint.update(query1);
 			String query2 = "BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
@@ -311,7 +311,7 @@ public class Service {
 					+ "	<http://localhost:4567/"+name.replace(" ","")+"> foaf:homepage <"+SOURCE+">.\r\n"
 					+ "}"
 					+ "} ";
-			System.out.println(query2);
+			//System.out.println(query2);
 			SparqlEndpoint.update(query2);
 			return "Lista de tripletas actualizadaS";
 		});
