@@ -313,7 +313,7 @@ public class Service {
 					+ "} ";
 			//System.out.println(query2);
 			SparqlEndpoint.update(query2);
-			return "Lista de tripletas actualizadaS";
+			return "Lista de tripletas actualizada";
 		});
 		
 		}
