@@ -1,8 +1,24 @@
 import static spark.Spark.*;
+
+import org.apache.jena.ontology.OntModel;
+import org.apache.jena.ontology.OntModelSpec;
+import org.apache.jena.ontology.Ontology;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.sparql.resultset.ResultsFormat;
+import org.apache.jena.util.iterator.ExtendedIterator;
+
 import sparql.streamline.core.EndpointConfiguration;
 import sparql.streamline.core.SparqlEndpoint;
+import sparql.streamline.exception.SparqlQuerySyntaxException;
+import sparql.streamline.exception.SparqlRemoteEndpointException;
+
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 public class Service {
 
@@ -125,196 +141,267 @@ public class Service {
 		   return "Actualizada";
 		});
 				
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//CRUD DE REGISTRO DE ONTOLOGÍAS.		
 		
-		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		//AQUÍ COMIENZA LA PARTE DEL SERVICIO EN LA QUE SE TRABAJA CON OWL COMO SE ESPECIFICA EN EL UC2
-		
-		//GET Para que de una ontología dada extraiga todas las tripletas presentes 
-		get("/OD/Ontologies/*/triplets", (request, response) -> {
-				StringBuffer sb = new StringBuffer();
-				for (int i=0; i<request.splat().length;i++)
-					sb.append(request.splat()[i]);
-				String name = sb.toString();
-				String query = "SELECT * FROM NAMED <http://localhost:4567/OD/"+name+">\r\n"
-						+ "{ GRAPH ?g { ?s ?p ?o } }";
-				ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
-				return res0.toString();
-	     });
-		
-		
-		//POST Para que la creación de un grafo partiendo del código OWL de una ontología dada y lo llene de estas tripletas.
-		post("/OD/Ontologies/*/triplets", (request, response) -> {
-			StringBuffer sb = new StringBuffer();
-			for (int i=0; i<request.splat().length;i++)
-				sb.append(request.splat()[i]);
-			String name = sb.toString();
-			String SOURCE = request.queryParams("SOURCE");
-			String query = "BASE <http://localhost:4567/>\r\n"
-					+ "LOAD <"+SOURCE+"> INTO GRAPH <http://localhost:4567/OD/"+name+">";
-			SparqlEndpoint.update(query);	
-			return "Grafo añadido";
-		});
-		
-		
-		//DELETE, se pasa nombre de un grafo que contiene una ontología y este se elimina.
-		delete("/OD/Ontologies/*/triplets", (request, response) -> {
-			StringBuffer sb = new StringBuffer();
-			for (int i=0; i<request.splat().length;i++)
-				sb.append(request.splat()[i]);
-			String name = sb.toString();
-			String query ="BASE <http://localhost:4567/>\r\n"
-					+ "DROP GRAPH <http://localhost:4567/OD/"+name+">;\r\n";
-			SparqlEndpoint.update(query);
-		    return "Grafo Eliminado";
-		});
-		
-		
-		//PUT, se pasa nombre e IRI de origen y este modifica una ontología existente. 
-		put("/OD/Ontologies/*/triplets", (request, response) -> {
-			StringBuffer sb = new StringBuffer();
-			for (int i=0; i<request.splat().length;i++)
-				sb.append(request.splat()[i]);
-			String name = sb.toString();
-			String SOURCE = request.queryParams("SOURCE");
-			String query = "BASE <http://localhost:4567/>\r\n"
-					+ "LOAD <"+SOURCE+"> INTO GRAPH <http://localhost:4567/OD/"+name+">";
-			SparqlEndpoint.update(query);
-			return "Grafo Actualizado";
-		});
-		
-		
-		//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		//UC3: UC3: Registration of a service/endpoint and (automatic?) extraction of the explicit ontology
-		
-		//GET: Obtención de todos los endpoints registrados 
-		get("/OD/Endpoints", (request, response) -> {
+		//GET de una Ontología concreta 
+		get("/OD/Ontologies/", (request, response) -> {
+			String uri = request.queryParams("uri");
 			String query = "BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-					+ "SELECT ?x ?name ?url\r\n"
-					+ "WHERE{\r\n"
-					+ "    GRAPH <http://localhost:4567/OD/Endpoints> {\r\n"
-					+ "    ?x foaf:name ?name.\r\n"
-					+ "    ?x foaf:homepage ?url\r\n"
-					+ "}    \r\n"
-					+ "}";		
-			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
-			return res0.toString();
-	     });
-		
-		
-		//GET de un endpoint concreto junto con su conjunto de términos asociado
-		//Funciona el método pero en el ejemplo de wikidata tarda tanto tiempo que el servicio se cae. 
-		get("/OD/Endpoints/*", (request, response) -> {
-			StringBuffer sb = new StringBuffer();
-			for (int i=0; i<request.splat().length;i++)
-				sb.append(request.splat()[i]);
-			String name = sb.toString();
-			String query = "BASE <http://localhost:4567/>\r\n"
-					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-					+ "SELECT ?x ?url ?s ?p ?o\r\n"
+					+ "SELECT ?s ?p ?o\r\n"
 					+ "WHERE {\r\n"
-					+ "    GRAPH <http://localhost:4567/OD/Endpoints>{\r\n"
-					+ "	?x foaf:name \""+name+"\".\r\n"
-					+ "	?x foaf:homepage ?url.\r\n"
-					+ "	}\r\n"
-					+ "    GRAPH ?url {\r\n"
-					+ "	?s ?p ?o.\r\n"
+					+ "    GRAPH <"+uri+"> {\r\n"
+					+ "		?s ?p ?o.\r\n"
 					+ "	}\r\n"
 					+ "}";
+			System.out.println(query);
 			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
 			return res0.toString();
 		});
 		
-		
-		//POST de los endpoints y las tripletas que este contiene 
-		post("/OD/Endpoints/*", (request, response) -> {
-			StringBuffer sb = new StringBuffer();
-			for (int i=0; i<request.splat().length;i++)
-				sb.append(request.splat()[i]);
-			String name = sb.toString();
+		//Método auxiliar de post de ontología hasta que este esté hecho
+		post("/OD/Ontologies/", (request, response) -> {
 			String url = request.queryParams("url"); 
+			OntModel m = ModelFactory.createOntologyModel( OntModelSpec.OWL_MEM );
+			m.read(url);
+			//Obtenemos el nombre de la ontología mediante la creación de otro modelo desde uno. 
+			OntModel mBase = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, m.getBaseModel());
+			ExtendedIterator<Ontology> it = mBase.listOntologies();
+			Ontology o = it.next();
+			//Obtención del título de la ontología.
+			StmtIterator it1 = m.listStatements();
+			Statement elem;
+			String pred="";
+			String obj="";
+			Boolean found = false;
+			while(it1.hasNext() && !found) {
+				elem = it1.next();
+				pred = elem.getPredicate().toString();
+				obj = elem.getObject().toString();
+				if(pred.equals("http://purl.org/dc/elements/1.1/title")) {
+					System.out.println(obj);
+					found=true;
+				}
+			}
 			String query = "BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
 					+ "INSERT DATA { \r\n"
-					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\r\n"
-					+ "	<http://localhost:4567/"+name+"> foaf:name \""+name+"\"; \r\n"
+					+ "	<"+o+"> foaf:name \""+obj+"\"; \r\n"
 					+ "    							foaf:homepage <"+url+">.\r\n"
-					+"}"
 					+ "} ";
+			System.out.println(query);
 			SparqlEndpoint.update(query);
 			String query1 = "BASE <http://localhost:4567/>\r\n"
-					+ "LOAD <"+url+"> INTO GRAPH <"+url+">";
+					+ "LOAD <"+url+"> INTO GRAPH <"+o+">";
+			System.out.println(query1);
 			SparqlEndpoint.update(query1);
-			return "Lista de términos añadida";
-		});
+			return "Ontología añadida AUX";
+		});		
 		
-		//Quizá podríamos hacer primero query para obtener la url y así no se pasa como parámetro
-		//Por otro lado teniendo en cuenta que el NG tiene el nombre de la URL 
-		//¿No deberíamos directamente prescindir del nombre como atributo ya que tiene una presencia testimonial?
-		// DELETE de la información del endpoint en el grafo de endpoints y borrado de su grafo correspondiente.
-		delete("/OD/Endpoints/*", (request, response) -> {
-			StringBuffer sb = new StringBuffer();
-			for (int i=0; i<request.splat().length;i++)
-				sb.append(request.splat()[i]);
-			String name = sb.toString();
-			String url = request.queryParams("url"); 
+		
+		// DELETE de la Ontología
+		delete("/OD/Ontologies/", (request, response) -> {
+			String uri = request.queryParams("uri"); 
 			String query1 = "BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-					+ "DROP GRAPH <"+url+">;\r\n"
+					+ "DROP GRAPH <"+uri+">;\r\n"
 					+ "DELETE {\r\n"
-					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\r\n"
 					+ "    ?x foaf:name ?name;\r\n"
 					+ "       foaf:homepage ?url.\r\n"
-					+ "}"
 					+ "}\r\n"
 					+ "WHERE{\r\n"
 					+ "     ?x foaf:name ?name;\r\n"
 					+ "       foaf:homepage ?url.\r\n"
-					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
+					+ "     FILTER(str(?x) = \""+uri+"\") \r\n"
 					+ "}\r\n";
-			//System.out.println(query1);
+			System.out.println(query1);
 			SparqlEndpoint.update(query1);
-		    return "Lista de términos y entrada eliminados";
+		    return "Ontología eliminada";
 		});
 		
-		//Preguntar a Andrea y Raúl que hacer con el tema de que hacer con el nombre de los grafos ya que va asociado al servicio y quizá al cambiar el nombre del grafo se pierde algo
-		//al asociarlo a la dirección de donde se obtienen los datos.
-		//PUT de los endpoints
-		put("/OD/Endpoints/*", (request, response) -> {
-			StringBuffer sb = new StringBuffer();
-			for (int i=0; i<request.splat().length;i++)
-				sb.append(request.splat()[i]);
-			String name = sb.toString();
+		//PUT de las Ontologías.
+		put("/OD/Ontologies/", (request, response) -> {
+			String uri = request.queryParams("uri");
 			String SOURCE = request.queryParams("SOURCE");
-			String query = "BASE <http://localhost:4567/>\r\n"
-					+ "LOAD <"+SOURCE+"> INTO GRAPH <"+name+">";
-			//System.out.println(query);
+			String query ="BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+					+ "COPY <"+SOURCE+"> TO <"+uri+"> \r\n";
+			System.out.println(query);
 			SparqlEndpoint.update(query);
 			String query1 ="BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-					+ "DELETE {\r\n"
-					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\r\n"
+		            + "DELETE {\r\n"
 					+ "    ?x foaf:homepage ?url.\r\n"
-					+ "}\r\n"
 					+ "}"
 					+ "WHERE{\r\n"
 					+ "     ?x foaf:name ?name;\r\n"
 					+ "       foaf:homepage ?url.\r\n"
-					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
+					+ "     FILTER(str(?x) = \""+uri+"\") \r\n"
 					+ "}";
-			//System.out.println(query1);
+			System.out.println(query1);
 			SparqlEndpoint.update(query1);
 			String query2 = "BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
 					+ "INSERT DATA { \r\n"
-					+ "GRAPH <http://localhost:4567/OD/Endpoints> {\r\n"
-					+ "	<http://localhost:4567/"+name.replace(" ","")+"> foaf:homepage <"+SOURCE+">.\r\n"
-					+ "}"
+					+ "	<"+uri+"> foaf:homepage <"+SOURCE+">.\r\n"
 					+ "} ";
-			//System.out.println(query2);
+			System.out.println(query2);
 			SparqlEndpoint.update(query2);
 			return "Lista de tripletas actualizada";
 		});
 		
+		//UC5.1 y UC5.2
+		//Método para obtener qué términos están presentes en qué ontologías.
+		get("OD/Ontologies/TermLocation",(request,response) -> {
+			String term = request.queryParams("uri");
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+					+ "SELECT DISTINCT ?ont WHERE {\r\n"
+					+ "    GRAPH ?ont {\r\n"
+					+ "        {?sub ?pred "+term+"} UNION {"+term+" ?pred1 ?obj} UNION {?sub1 "+term+" ?obj1}\r\n"
+					+ "    }\r\n"
+					+ "}";
+			//System.out.println(query);
+			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
+			return res0.toString();			
+		});
+		
+		//UC5.3
+		//Método para obtener qué términos de una ontología son ajenos
+		get("OD/Ontologies/ForeignTerms",(request,response)->{
+			String ont = request.queryParams("uri");
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "SELECT DISTINCT ?x\r\n"
+					+ " WHERE {\r\n"
+					+ "    GRAPH <"+ont+">{\r\n"
+					+ "    {?sub ?pred ?x} UNION {?x ?pred1 ?obj} UNION {?sub1 ?x ?obj1}.\r\n"
+					+ "        FILTER(!STRSTARTS(STR(?x), \""+ont+"\") && isURI(?x))\r\n"
+					+ "    }\r\n"
+					+ " }";
+			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
+			System.out.println(res0.toString());
+			return res0.toString();
+		});
+		
+		//UC5.4 
+		//Porcentaje de términos propios de esta ontología y que porcentaje de términos es de ontologías ajenas
+		get("OD/Ontologies/ForeignPercentage",(request,response)->{
+			String ont = request.queryParams("uri");
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "SELECT DISTINCT ?x\r\n"
+					+ " WHERE {\r\n"
+					+ "    GRAPH <"+ont+">{\r\n"
+					+ "    {?sub ?pred ?x} UNION {?x ?pred1 ?obj} UNION {?sub1 ?x ?obj1}.\r\n"
+					+ "        FILTER(!STRSTARTS(STR(?x), \""+ont+"\") && isURI(?x))\r\n"
+					+ "    }\r\n"
+					+ " }";
+			String res = SparqlEndpoint.query(query,ResultsFormat.FMT_COUNT).toString();
+			res = res.replaceAll("[^0-9]", ""); 
+			int val1 = Integer.parseInt(res);
+			System.out.println(val1);
+			String query1 = "BASE <http://localhost:4567/>\r\n"
+					+ "SELECT DISTINCT ?x\r\n"
+					+ " WHERE {\r\n"
+					+ "    GRAPH <"+ont+">{\r\n"
+					+ "    {?sub ?pred ?x} UNION {?x ?pred1 ?obj} UNION {?sub1 ?x ?obj1}.\r\n"
+					+ "        FILTER(isURI(?x))\r\n"
+					+ "    }\r\n"
+					+ " }";
+			res = SparqlEndpoint.query(query1,ResultsFormat.FMT_COUNT).toString();
+			res = res.replaceAll("[^0-9]", ""); 
+			int val2 = Integer.parseInt(res);
+			System.out.println(val2);
+			return (double)val1/val2*100;
+		});
+		
+		//UC5.5 Obtención del rango de un object type propery
+		get("OD/Ontologies/RangeofProperty", (request,response) -> {
+			String prop = request.queryParams("property"); 
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\r\n"
+					+ "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\r\n"
+					+ "PREFIX owl: <http://www.w3.org/2002/07/owl#>\r\n"
+					+ "SELECT ?obj\r\n"
+					+ " WHERE {\r\n"
+					+ "   		<"+prop+"> rdf:type owl:ObjectProperty;\r\n"
+					+ "           rdfs:range ?obj.\r\n"
+					+ " }";
+			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
+			return res0.toString();
+		});
+		
+		//UC5.6 ¿Qué ontologías están importadas o reutilizan la una a la otra en OD?
+		//1. Búsqueda en el grafo por defecto la url asociada a la URI de la ontología
+		//2. Teniendo esta se carga en jena mediante el método read.
+		//3. Se obtiene el prefix map de este
+		//4. Del prefix map obtenemos el prefijo que identifica a la ontología
+		//5. Se sustrae del prefix map el prejijo que identifica a la ontología
+		//6. Se vierten los prefijos restantes en un string o array que se pueda devolver
+		//7. Se devuelve la información al usuario. 
+		get("OD/Ontologies/OntologiesReused",(request,response) ->{
+			String uri = request.queryParams("uri");
+			String query = "BASE <http://localhost:4567/>\r\n"
+	                + "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+	                + "SELECT ?url\r\n"
+	                + "WHERE {\r\n"
+	                + "    <"+uri+"> foaf:homepage ?url\r\n"
+	                + "}\r\n"
+	                + "";
+			String res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_TEXT).toString();
+			String url = res0.substring(res0.lastIndexOf("<") + 1, res0.indexOf(">"));
+			OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM);
+			m.read(url);
+			Map<String,String> pm = m.getNsPrefixMap();
+			ArrayList<String> res = new ArrayList<String>();
+			for(String clave: pm.keySet()) {
+				String valor = pm.get(clave);
+				System.out.println(clave);
+				System.out.println(valor);
+				if(!valor.equals(uri)) {
+					res.add(valor);	
+					res.add("\n");
+				}
+			}
+			return res;
+		});
+		
 		}
+	
+		public static String dependencyextraction(String onturl) throws SparqlQuerySyntaxException, SparqlRemoteEndpointException {
+			//Flujo de código:
+			//1. Tenemos nombre de la ontología de la que se quiere leer las dependencias
+			//2. Leemos código del que extrer las referencias del nombre
+			//3. De ahí se obtiene o bien la línea que define el namespace para el atajo o se busca el ":" para hayar las ontologías
+			//4. Se comprueba si está presente en el repositorio de GraphDB
+			//4.1 Si está se continúa
+			//4.2 Si no está se añade al grafo por defecto y se carga el grafo correspondiente mediante búsqueda en un buscador de ontologías
+			//5. En un array de strings se añaden la dependencia hallada
+			//6. Se repiten los pasos 3-5 si hay más dependencias 
+			//7. Se devuelve String que contiene las dependencias. 
+			ArrayList<String> dependencies = new ArrayList<String>();
+			List<String> dependenciesaux = Arrays.asList("rdf","rdfs","owl");
+			dependenciesaux.addAll(dependenciesaux);
+			OntModel m = ModelFactory.createOntologyModel( OntModelSpec.OWL_MEM );
+			m.read(onturl);
+			Map<String,String> pm = m.getNsPrefixMap();
+			boolean found = false;
+			//Comprobamos si pertenecen a los namespaces de dependencies. 
+			for(String clave:pm.keySet()) {
+				//String value = pm.get(clave);
+				for(String elem:dependencies){
+					if(elem.equals(clave)) {
+						//Está en este conjunto de dependencias asique salimos del bucle
+						found = true;
+						break;
+					}
+					if(!found) {
+						//¿COMO ACCEDO A LOS PREFIXES?????
+						//LA ÚNICA FORMA QUE SE ME OCURRE DE HACERLO ES MEDIANTE PARSEO DEL TEXTO PARA LUEGO HACER LA COMPARACIÓN YA QUE NO PUEDO HACERLO DESDE GRAPHDB.
+					}	
+				}	
+			}
+			return null;			
+		}
+	
 	}
