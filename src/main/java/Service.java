@@ -11,14 +11,16 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 
 import sparql.streamline.core.EndpointConfiguration;
 import sparql.streamline.core.SparqlEndpoint;
-import sparql.streamline.exception.SparqlQuerySyntaxException;
-import sparql.streamline.exception.SparqlRemoteEndpointException;
+//import sparql.streamline.exception.SparqlQuerySyntaxException;
+//import sparql.streamline.exception.SparqlRemoteEndpointException;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
+//import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Service {
 
@@ -38,6 +40,7 @@ public class Service {
 		
 		//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		//AQUÍ COMIENZA LA PARTE DEL UC1
+		//TODO: REMODELAR ESTO YA QUE NO TIENE MUCHO SENTIDO ESTANDO COMO ESTÁ
 		
 		//GET para que devuelva el conjunto de tripletas guardadas
 		get("/OD/Ontologies", (request, response) -> {
@@ -53,94 +56,93 @@ public class Service {
 	     });
 
 		
-		//GET Para que busque un elemento dentro de la lista al incluirlo en la URL.
-		get("/OD/Ontologies/*/URL", (request, response) -> {
-				StringBuffer sb = new StringBuffer();
-				for (int i=0; i<request.splat().length;i++)
-					sb.append(request.splat()[i]);
-				String name = sb.toString();
+		//GET Para que busque un elemento dentro de la lista al incluirlo en la URL y los metadatos. 
+		get("/OD/Ontology/Metadata", (request, response) -> {
+				String uri = request.queryParams("uri");
 				String query = "BASE <http://localhost:4567/>\r\n"
 		                + "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-		                + "SELECT ?x ?url\r\n"
+		                + "SELECT ?prop ?obj \r\n"
 		                + "WHERE {\r\n"
-		                + "    ?x foaf:name \""+ name +"\".\r\n"
-		                + "    ?x foaf:homepage ?url\r\n"
+		                + "    <"+uri+"> ?prop ?obj .\r\n"
 		                + "}\r\n"
 		                + "";
+				System.out.println(query);
 				ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
 				return res0.toString();
 	     });
 		
+		//COMENTAMOS ESTE CÓDIGO PORQUE NO TIENE MUCHO SENTIDO REALIZANDOSE LA INCLUSIÓN DE LA URL Y METADATOS DE FORMA AUTOMÁTICA DEL REGISTRO DE 
+		//ONTOLOGÍA, DEJAMOS LOS DOS GET DE ARRIBA PORQUE UNO NOS SIRVE PARA DEVOLVER LO QUE CONTIENE EL GRAFO POR DEFECTO Y OTRO PARA DEVOLVER LA INFORMACIÓN DE LOS METADATOS. 
 		
-		//POST Para crear una URL dentro de la lista de estas. 
-		post("/OD/Ontologies/*/URL", (request, response) -> {
-			StringBuffer sb = new StringBuffer();
-			for (int i=0; i<request.splat().length;i++)
-				sb.append(request.splat()[i]);
-			String name = sb.toString();
-			String url = request.queryParams("url"); 
-			String query = "BASE <http://localhost:4567/>\r\n"
-					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-					+ "INSERT DATA { \r\n"
-					+ "	<http://localhost:4567/"+name.replace(" ","")+"> foaf:name \""+name+"\"; \r\n"
-					+ "    							foaf:homepage <"+url+">.\r\n"
-					+ "} ";
-			SparqlEndpoint.update(query);
-			return "Tripleta Añadida";
-		});
-		
-		
-		///DELETE Para eliminar una URL de dentro de la lista de estas. 
-		delete("/OD/Ontologies/*/URL", (request, response) -> {
-			StringBuffer sb = new StringBuffer();
-			for (int i=0; i<request.splat().length;i++)
-				sb.append(request.splat()[i]);
-			String name = sb.toString();
-			String query ="BASE <http://localhost:4567/>\r\n"
-					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-					+ "DELETE {\r\n"
-					+ "    ?x foaf:name ?name;\r\n"
-					+ "       foaf:homepage ?url.\r\n"
-					+ "}\r\n"
-					+ "WHERE{\r\n"
-					+ "     ?x foaf:name ?name;\r\n"
-					+ "       foaf:homepage ?url.\r\n"
-					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
-					+ "}";
-			SparqlEndpoint.update(query);
-		   return "Tripleta Eliminada";
-		});
-		
-		
-		//PUT para modificar los valores de la URL de una determinada ontología 
-		put("/OD/Ontologies/*/URL", (request, response) -> {
-			StringBuffer sb = new StringBuffer();
-			for (int i=0; i<request.splat().length;i++)
-				sb.append(request.splat()[i]);
-			String name = sb.toString();
-			String url = request.queryParams("url");
-			String query ="BASE <http://localhost:4567/>\r\n"
-					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-					+ "DELETE {\r\n"
-					+ "    ?x foaf:homepage ?url.\r\n"
-					+ "}\r\n"
-					+ "WHERE{\r\n"
-					+ "     ?x foaf:name ?name;\r\n"
-					+ "       foaf:homepage ?url.\r\n"
-					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
-					+ "}";
-			System.out.println(query);
-			SparqlEndpoint.update(query);
-			String query1 = "BASE <http://localhost:4567/>\r\n"
-					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-					+ "INSERT DATA { \r\n"
-					+ "	<http://localhost:4567/"+name.replace(" ","")+"> foaf:homepage <"+url+">.\r\n"
-					+ "} ";
-			System.out.println(query1);
-			SparqlEndpoint.update(query1);
-		   return "Actualizada";
-		});
-				
+//		//POST Para crear una URL dentro de la lista de estas. 
+//		post("/OD/Ontologies/*/URL", (request, response) -> {
+//			StringBuffer sb = new StringBuffer();
+//			for (int i=0; i<request.splat().length;i++)
+//				sb.append(request.splat()[i]);
+//			String name = sb.toString();
+//			String url = request.queryParams("url"); 
+//			String query = "BASE <http://localhost:4567/>\r\n"
+//					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+//					+ "INSERT DATA { \r\n"
+//					+ "	<http://localhost:4567/"+name.replace(" ","")+"> foaf:name \""+name+"\"; \r\n"
+//					+ "    							foaf:homepage <"+url+">.\r\n"
+//					+ "} ";
+//			SparqlEndpoint.update(query);
+//			return "Tripleta Añadida";
+//		});
+//		
+//		
+//		///DELETE Para eliminar una URL de dentro de la lista de estas. 
+//		delete("/OD/Ontologies/*/URL", (request, response) -> {
+//			StringBuffer sb = new StringBuffer();
+//			for (int i=0; i<request.splat().length;i++)
+//				sb.append(request.splat()[i]);
+//			String name = sb.toString();
+//			String query ="BASE <http://localhost:4567/>\r\n"
+//					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+//					+ "DELETE {\r\n"
+//					+ "    ?x foaf:name ?name;\r\n"
+//					+ "       foaf:homepage ?url.\r\n"
+//					+ "}\r\n"
+//					+ "WHERE{\r\n"
+//					+ "     ?x foaf:name ?name;\r\n"
+//					+ "       foaf:homepage ?url.\r\n"
+//					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
+//					+ "}";
+//			SparqlEndpoint.update(query);
+//		   return "Tripleta Eliminada";
+//		});
+//		
+//		
+//		//PUT para modificar los valores de la URL de una determinada ontología 
+//		put("/OD/Ontologies/*/URL", (request, response) -> {
+//			StringBuffer sb = new StringBuffer();
+//			for (int i=0; i<request.splat().length;i++)
+//				sb.append(request.splat()[i]);
+//			String name = sb.toString();
+//			String url = request.queryParams("url");
+//			String query ="BASE <http://localhost:4567/>\r\n"
+//					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+//					+ "DELETE {\r\n"
+//					+ "    ?x foaf:homepage ?url.\r\n"
+//					+ "}\r\n"
+//					+ "WHERE{\r\n"
+//					+ "     ?x foaf:name ?name;\r\n"
+//					+ "       foaf:homepage ?url.\r\n"
+//					+ "     FILTER(str(?name) = \""+name+"\") \r\n"
+//					+ "}";
+//			System.out.println(query);
+//			SparqlEndpoint.update(query);
+//			String query1 = "BASE <http://localhost:4567/>\r\n"
+//					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+//					+ "INSERT DATA { \r\n"
+//					+ "	<http://localhost:4567/"+name.replace(" ","")+"> foaf:homepage <"+url+">.\r\n"
+//					+ "} ";
+//			System.out.println(query1);
+//			SparqlEndpoint.update(query1);
+//		   return "Actualizada";
+//		}); */
+//				
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //CRUD DE REGISTRO DE ONTOLOGÍAS.		
 		
@@ -174,6 +176,7 @@ public class Service {
 			Statement elem;
 			String pred="";
 			String obj="";
+			String subj = "";
 			Boolean found = false;
 			while(it1.hasNext() && !found) {
 				elem = it1.next();
@@ -192,11 +195,35 @@ public class Service {
 					+ "} ";
 			System.out.println(query);
 			SparqlEndpoint.update(query);
+				
+			 // Fragmento de código que busca las líneas de metadatos y las inserta en el grafo por defecto. 
+			it1 = m.listStatements();
+			String query2 = " BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
+					+ "INSERT DATA { \r\n";
+			found = false;
+			while(it1.hasNext() && !found) {
+				elem=it1.next();
+				subj = elem.getSubject().toString();
+				if(o.toString().equals(subj)) {
+					pred = elem.getPredicate().toString();
+					obj = elem.getObject().toString();
+					if(obj.startsWith("http"))
+						query2 += "	<"+o+"> <"+pred+"> <"+obj+">. \r\n";	
+					else
+						query2 += "	<"+o+"> <"+pred+"> \""+obj+"\". \r\n";
+				}
+			}
+			query2 += "} ";	
+			System.out.println(query2);
+			SparqlEndpoint.update(query2);
+			
+			//Se añaden las tripletas de la ontología al grafo correspondiente.
 			String query1 = "BASE <http://localhost:4567/>\r\n"
 					+ "LOAD <"+url+"> INTO GRAPH <"+o+">";
 			System.out.println(query1);
 			SparqlEndpoint.update(query1);
-			return "Ontología añadida AUX";
+			return "Ontología añadida";
 		});		
 		
 		
@@ -207,12 +234,10 @@ public class Service {
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
 					+ "DROP GRAPH <"+uri+">;\r\n"
 					+ "DELETE {\r\n"
-					+ "    ?x foaf:name ?name;\r\n"
-					+ "       foaf:homepage ?url.\r\n"
+					+ "    ?x ?prop ?obj.\r\n"
 					+ "}\r\n"
 					+ "WHERE{\r\n"
-					+ "     ?x foaf:name ?name;\r\n"
-					+ "       foaf:homepage ?url.\r\n"
+					+ "     ?x ?prop ?obj.\r\n"
 					+ "     FILTER(str(?x) = \""+uri+"\") \r\n"
 					+ "}\r\n";
 			System.out.println(query1);
@@ -222,32 +247,63 @@ public class Service {
 		
 		//PUT de las Ontologías.
 		put("/OD/Ontologies/", (request, response) -> {
+			//Extracción de parámetros
 			String uri = request.queryParams("uri");
 			String SOURCE = request.queryParams("SOURCE");
-			String query ="BASE <http://localhost:4567/>\r\n"
-					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-					+ "COPY <"+SOURCE+"> TO <"+uri+"> \r\n";
+			//Se copia el grafo presente en SOURCE en el grafo uri local.
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "CLEAR GRAPH <"+uri+">";
 			System.out.println(query);
 			SparqlEndpoint.update(query);
+			query ="BASE <http://localhost:4567/>\r\n"
+					+ "LOAD <"+SOURCE+"> INTO GRAPH  <"+uri+"> \r\n";
+			System.out.println(query);
+			SparqlEndpoint.update(query);
+			//Se borran los antiguos datos del grafo por defecto (metadatos y fuente)
 			String query1 ="BASE <http://localhost:4567/>\r\n"
-					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
 		            + "DELETE {\r\n"
-					+ "    ?x foaf:homepage ?url.\r\n"
+					+ "    ?x ?prop ?obj.\r\n"
 					+ "}"
 					+ "WHERE{\r\n"
-					+ "     ?x foaf:name ?name;\r\n"
-					+ "       foaf:homepage ?url.\r\n"
+					+ "     ?x ?prop ?obj.\r\n"
 					+ "     FILTER(str(?x) = \""+uri+"\") \r\n"
 					+ "}";
 			System.out.println(query1);
 			SparqlEndpoint.update(query1);
-			String query2 = "BASE <http://localhost:4567/>\r\n"
+			// Fragmento de código que busca las líneas de metadatos y las inserta en el grafo por defecto. 
+			OntModel m = ModelFactory.createOntologyModel( OntModelSpec.OWL_MEM );
+			m.read(SOURCE);
+			//Obtenemos el nombre de la ontología mediante la creación de otro modelo desde uno. 
+			OntModel mBase = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, m.getBaseModel());
+			ExtendedIterator<Ontology> it = mBase.listOntologies();
+			Ontology o = it.next();
+			//Obtención del título de la ontología.
+			StmtIterator it1 = m.listStatements();
+			Statement elem;
+			String pred="";
+			String obj="";
+			String subj = "";
+			Boolean found = false;
+			it1 = m.listStatements();
+			String query2 = " BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
-					+ "INSERT DATA { \r\n"
-					+ "	<"+uri+"> foaf:homepage <"+SOURCE+">.\r\n"
-					+ "} ";
+					+ "INSERT DATA { \r\n";
+			found = false;
+			while(it1.hasNext() && !found) {
+				elem=it1.next();
+				subj = elem.getSubject().toString();
+				if(o.toString().equals(subj)) {
+					pred = elem.getPredicate().toString();
+					obj = elem.getObject().toString();
+					if(obj.startsWith("http"))
+						query2 += "	<"+o+"> <"+pred+"> <"+obj+">. \r\n";	
+					else
+						query2 += "	<"+o+"> <"+pred+"> \""+obj+"\". \r\n";
+				}
+			}
+			query2 += "} ";	
 			System.out.println(query2);
-			SparqlEndpoint.update(query2);
+			SparqlEndpoint.update(query2);			
 			return "Lista de tripletas actualizada";
 		});
 		
@@ -262,7 +318,7 @@ public class Service {
 					+ "        {?sub ?pred "+term+"} UNION {"+term+" ?pred1 ?obj} UNION {?sub1 "+term+" ?obj1}\r\n"
 					+ "    }\r\n"
 					+ "}";
-			//System.out.println(query);
+			System.out.println(query);
 			ByteArrayOutputStream res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_RS_JSON);
 			return res0.toString();			
 		});
@@ -366,8 +422,29 @@ public class Service {
 			return res;
 		});
 		
+		get("OD/Services/OntologiesReused",(request,response) ->{
+			String service = request.queryParams("service");
+			String query = "BASE <http://localhost:4567/>\r\n"
+					+ "PREFIX dc: <http://purl.org/dc/elements/1.1/>\r\n"
+					+ "SELECT DISTINCT ?x  WHERE {\r\n"
+					+ "     GRAPH <http://localhost:4567/OD/TermsfromService> {\r\n"
+					+ "        ?x dc:source <"+service+">.\r\n"
+					+ "    }\r\n"
+					+ "}";
+			String res0 = SparqlEndpoint.query(query,ResultsFormat.FMT_TEXT).toString();
+			//System.out.println(res0);
+			List<String> matches = new ArrayList<>();
+			Matcher m = Pattern.compile("<([^><]+)>").matcher(res0);
+			while(m.find()){
+			   matches.add(m.group(1));
+			}
+			return matches;
+				
+		});
+		
+		
 		}
-	
+	/*
 		public static String dependencyextraction(String onturl) throws SparqlQuerySyntaxException, SparqlRemoteEndpointException {
 			//Flujo de código:
 			//1. Tenemos nombre de la ontología de la que se quiere leer las dependencias
@@ -402,6 +479,6 @@ public class Service {
 				}	
 			}
 			return null;			
-		}
+		}*/
 	
 	}
