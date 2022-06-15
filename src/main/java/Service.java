@@ -60,7 +60,7 @@ public class Service {
 		});
 
 		//POST de una Ontología, 
-		post("/OTI/Ontologies/", (request, response) -> {
+		post("/OTI/Ontology/", (request, response) -> {
 			String url = request.queryParams("url");
 			OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM);
 			m.read(url);
@@ -80,8 +80,6 @@ public class Service {
 				pred = elem.getPredicate().toString();
 				obj = elem.getObject().toString();
 				if (pred.equals("http://purl.org/dc/elements/1.1/title")) 
-					found = true;
-				else if (pred.equals("http://www.w3.org/2002/07/owl#Ontology"))
 					found = true;
 			}
 			String query = "BASE <http://localhost:4567/>\r\n" + "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
@@ -114,7 +112,7 @@ public class Service {
 		});
 
 		// DELETE de la Ontología
-		delete("/OTI/Ontologies/", (request, response) -> {
+		delete("/OTI/Ontology/", (request, response) -> {
 			String uri = request.queryParams("uri");
 			String query1 = "BASE <http://localhost:4567/>\r\n" 
 					+ "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
@@ -129,7 +127,7 @@ public class Service {
 		});
 
 		// PUT de las Ontologías.
-		put("/OTI/Ontologies/", (request, response) -> {
+		put("/OTI/Ontology/", (request, response) -> {
 			// Extracción de parámetros
 			String uri = request.queryParams("uri");
 			String SOURCE = request.queryParams("SOURCE");
@@ -285,8 +283,8 @@ public class Service {
 			Matcher m1 = Pattern.compile("http.+").matcher(listofterms);
 			while (m1.find())
 				matches.add(m1.group().replace(" ", ""));
-			for (int i = 0; i < matches.size();)
-				terms.put(matches.get(i++), matches.get(i++));
+				for (int i = 0; i < matches.size();)
+					terms.put(matches.get(i++), matches.get(i++));
 			String query = "BASE <http://localhost:4567/>\r\n" + "PREFIX dc: <http://purl.org/dc/elements/1.1/>\r\n"
 					+ "INSERT DATA{ \r\n" + "     GRAPH <http://localhost:4567/OD/TermsfromService> {\r\n";
 			for (Map.Entry<String, String> entry : terms.entrySet())
@@ -318,7 +316,7 @@ public class Service {
 		});
 
 		// DELETE borra entradas determinadas de la lista de términos
-		delete("OTI/Services/ListofTerms/Term", (request, response) -> {
+		delete("OTI/Services/ListofTerms/", (request, response) -> {
 			String listofterms = request.body();
 			listofterms = listofterms.replace("\""," ");
 			Map<String, String> terms = new HashMap<String, String>();
@@ -338,7 +336,7 @@ public class Service {
 		});
 
 		//DELETE borra las entradas asociadas a un servicio de terminado
-		delete("OTI/Services/ListofTerms/",(request,response)->{
+		delete("OTI/Services/ListofTerms/TermsfromaService",(request,response)->{
 			String service = request.queryParams("service");
 			String query = "BASE <http://localhost:4567/>\r\n"
 					+ "PREFIX dc: <http://purl.org/dc/elements/1.1/>\r\n"
@@ -394,7 +392,7 @@ public class Service {
 		});
 		
 		// Método de extracción de la licencia de una ontología.
-		get("OTI/Ontologies/Metadata/License", (request, response) -> {
+		get("OTI/Ontology/Metadata/License", (request, response) -> {
 			String ont = request.queryParams("uri");
 			String query = "BASE <http://localhost:4567/>\r\n" + "PREFIX dct: <http://purl.org/dc/terms/>\r\n"
 					+ "SELECT ?license WHERE {\r\n" + "    <" + ont + "> dct:license ?license\r\n" + "}";
@@ -426,8 +424,11 @@ public class Service {
 			String res0 = SparqlEndpoint.query(query, ResultsFormat.FMT_TEXT).toString();
 			List<String> matches = new ArrayList<>();
 			Matcher m = Pattern.compile("<([^><]+)>").matcher(res0);
+			String parseduri; 
 			while (m.find()) {
-				matches.add(m.group(1));
+				parseduri = m.group(1).substring(0, m.group(1).lastIndexOf('/'));
+				if(!matches.contains(parseduri)) 
+					matches.add(parseduri);
 			}
 			return matches;
 		});
