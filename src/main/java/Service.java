@@ -443,6 +443,21 @@ public class Service {
 			return res0.toString();
 		});
 
+		//TODO: INCLUIR ESTO EN LA MEMORIA
+		//Método que devuelve que servicios reutilizan una ontología
+		get("OTI/Services/ServicewithOnt",(request,response)->{
+			String ont = request.queryParams("ont");
+			String query = "BASE <http://localhost:4567/>\r\n" 
+					+ "PREFIX dc: <http://purl.org/dc/elements/1.1/>\r\n"
+					+ "SELECT DISTINCT ?x\r\n" + " WHERE {\r\n"
+					+ "    GRAPH <http://localhost:4567/OD/TermsfromService>{\r\n"
+					+ "    ?term dc:source ?x.\r\n"
+					+ "        FILTER(!STRSTARTS(STR(?term), \"" + ont + "\"))\r\n" + "    }\r\n" + " }";
+			//System.out.println(query);
+			ByteArrayOutputStream res0 = SparqlEndpoint.query(query, ResultsFormat.FMT_RS_JSON);
+			return res0.toString();
+		});
+		
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //Métodos de CRUD de la extracción automática de términos		
 
@@ -498,7 +513,7 @@ public class Service {
 			SparqlEndpoint.update(query);			
 			// Método que al añadirlo devuelva si algún namespace no está presente en local al subir el servicio.
 			List<String> res = new ArrayList<String>();
-			res.add("Conjunto de ontologías no presentes en el servicio \r\n");
+			res.add("Set of Ontologies that are not present in the System. \r\n");
 			for (String clave : nsaux.keySet()) {
 				String query1 = "BASE <http://localhost:4567/>\r\n"
 						+ "ASK{\r\n"
@@ -519,9 +534,7 @@ public class Service {
 		
 		//Método GET que permite realizar queries en el raw de la petición para obtener respuestas de sparql del servicio.
 		get("OTI/Query",(request,response)->{
-			//String query = request.raw().toString();
 			String query = request.queryParams("query");
-			//System.out.println(query);
 			ByteArrayOutputStream res0 = SparqlEndpoint.query(query, ResultsFormat.FMT_RDF_TURTLE);
 			return res0.toString();
 		});
