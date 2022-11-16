@@ -85,6 +85,7 @@ public class Service {
 			String query = "BASE <http://localhost:4567/>\r\n" + "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
 					+ "INSERT DATA { \r\n" + "	<" + o + "> foaf:name \"" + obj + "\"; \r\n"
 					+ "    							foaf:homepage <" + url + ">.\r\n" + "} ";
+			//System.out.println(query);
 			SparqlEndpoint.update(query);
 			// Fragmento de código que busca las líneas de metadatos y las inserta en el grafo por defecto.
 			it1 = m.listStatements();
@@ -99,14 +100,16 @@ public class Service {
 					obj = elem.getObject().toString();
 					if (obj.startsWith("http"))
 						query2 += "	<" + o + "> <" + pred + "> <" + obj + ">. \r\n";
-					else
-						query2 += "	<" + o + "> <" + pred + "> \"" + obj + "\". \r\n";
+					else 
+						query2 += "	<" + o + "> <" + pred + "> \"\"\"" + obj + "\"\"\". \r\n";
 				}
 			}
 			query2 += "} ";
+			System.out.println(query2);
 			SparqlEndpoint.update(query2);
 			// Se añaden las tripletas de la ontología al grafo correspondiente.
 			String query1 = "BASE <http://localhost:4567/>\r\n" + "LOAD <" + url + "> INTO GRAPH <" + o + ">";
+			System.out.println(query1);
 			SparqlEndpoint.update(query1);
 			return "Ontology Added";
 		});
@@ -258,7 +261,9 @@ public class Service {
 			String query = "BASE <http://localhost:4567/>\r\n" + "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\r\n"
 					+ "SELECT ?url\r\n" + "WHERE {\r\n" + "    <" + uri + "> foaf:homepage ?url\r\n" + "}\r\n" + "";
 			String res0 = SparqlEndpoint.query(query, ResultsFormat.FMT_TEXT).toString();
-			String url = res0.substring(res0.lastIndexOf("<") + 1, res0.indexOf(">"));
+			//System.out.println(res0);
+			String url = res0.substring(res0.indexOf("<")+1, res0.indexOf(">"));
+			//System.out.println(url);
 			OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM);
 			m.read(url);
 			Map<String, String> pm = m.getNsPrefixMap();
@@ -443,7 +448,6 @@ public class Service {
 			return res0.toString();
 		});
 
-		//TODO: INCLUIR ESTO EN LA MEMORIA
 		//Método que devuelve que servicios reutilizan una ontología
 		get("OTI/Services/ServicewithOnt",(request,response)->{
 			String ont = request.queryParams("ont");
